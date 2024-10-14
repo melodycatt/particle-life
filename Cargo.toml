@@ -1,0 +1,9 @@
+[package]
+name = "particle-life"
+version = "0.1.0"
+edition = "2021"
+default-run = "main"
+
+[dependencies]
+ggez = "0.9.3"
+rand = "0.8.5"
