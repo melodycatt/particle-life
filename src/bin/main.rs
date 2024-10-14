@@ -38,7 +38,7 @@ fn main() {
     // Create an instance of your event handler.
     // Usually, you should provide it with the Context object to
     // use when setting your game up.
-    let my_game = State::new(&mut ctx, 1000, 6, 2, 0.040, 0.2).unwrap();
+    let my_game = State::new(&mut ctx, 1000, 6, 2, 0.040, 0.1).unwrap();
     
 
     /*std::thread::spawn(move || {
@@ -68,7 +68,9 @@ struct State {
 
     am_m: Mesh,
 
-    window_drag_offset: (f32, f32)
+    window_drag_offset: (f32, f32),
+
+    cls: Vec<Color>
     /*positions: Vec<(f32, f32)>
     velocities: */
 }
@@ -89,7 +91,15 @@ impl State {
         let n2_a = 0.0;
         let n_a = 0.5;
 
-        let attraction_matrix = State::randomise_matrix(n_colours);
+        //let attraction_matrix = State::randomise_matrix(n_colours);
+        let attraction_matrix = State::generate_snake_matrix(1.0, 0.5, 0.0, n_colours);
+
+        let mut cls: Vec<Color> = vec![];
+        let angle = 360.0 / n_colours as f32;
+        for i in 0..n_colours {
+            cls.push(hsv_to_rgb(i as f32 * angle, 1.0, 1.0))
+        }
+        
         /*let attraction_matrix = vec![
             vec![0.0, 1.0, 0.0],
             vec![0.0, 0.5, 0.0],
@@ -147,6 +157,7 @@ impl State {
             dt: 0.02,
             am_m,
             window_drag_offset: (0.0, 0.0),
+            cls
         })
     }
 
@@ -178,9 +189,22 @@ impl State {
         particles
     }
 
-    /*fn generate_snake_matrix(s_a: f32, n_a: f32) -> Vec<Vec<f32>> {
-        
-    }*/
+    fn generate_snake_matrix(s_a: f32, n_a: f32, p_a: f32, n_colours: u8) -> Vec<Vec<f32>> {
+        let mut matrix: Vec<Vec<f32>> = vec![];
+
+        for i in 0..n_colours as usize {
+            let mut row: Vec<f32> = vec![];
+            for j in 0..n_colours as usize {
+                row.push(0.0);
+            }
+            row[i] = s_a;
+            row[(i + 1) % n_colours as usize] = n_a;
+            row[((i as isize - 1).rem_euclid(n_colours as isize)) as usize] = p_a;
+            matrix.push(row);
+        };
+
+        matrix
+    }
 
     fn calculate_force(r: f32, a: f32) -> f32 {
         let beta = 0.3;
@@ -203,8 +227,10 @@ impl EventHandler for State {
             self.window_drag_offset = (m_ctx.delta().x + self.window_drag_offset.0, m_ctx.delta().y + self.window_drag_offset.1);
             ctx.gfx.set_window_position(pos)?;
         }
-
+        
+        let f_fact = self.r_max * self.fo_factor * self.dt;
         for i in 0..self.n as usize {
+            let col_usize = self.particles[i].color as usize;
             let mut total_fx = 0.0;
             let mut total_fy = 0.0;
     
@@ -214,18 +240,15 @@ impl EventHandler for State {
                 let ry = self.particles[j].pos.1 - self.particles[i].pos.1;
                 let r = (rx.powi(2) + ry.powi(2)).sqrt();
                 if r > 0.0 && r < self.r_max {
-                    let f = State::calculate_force(r / self.r_max, self.attraction_matrix[self.particles[i].color as usize][self.particles[j].color as usize]);
+                    let f = State::calculate_force(r / self.r_max, self.attraction_matrix[col_usize][self.particles[j].color as usize]);
                     total_fx += rx / r * f;
                     total_fy += ry / r * f;
                 }
             }    
-            total_fx *= self.r_max * self.fo_factor;
-            total_fy *= self.r_max * self.fo_factor;
-            self.particles[i].vel.0 *= self.f_factor;
-            self.particles[i].vel.1 *= self.f_factor;
-
-            self.particles[i].vel.0 += total_fx * self.dt;
-            self.particles[i].vel.1 += total_fy * self.dt;
+            total_fx *= f_fact;
+            total_fy *= f_fact;
+            self.particles[i].vel.0 = self.particles[i].vel.0 * self.f_factor + total_fx;
+            self.particles[i].vel.1 = self.particles[i].vel.1 * self.f_factor + total_fy;
         }
         for i in 0..self.n as usize {
             self.particles[i].pos.0 += self.particles[i].vel.0 * self.dt;
@@ -249,14 +272,14 @@ impl EventHandler for State {
             Color::from_rgb(255, 235, 253),
             Color::from_rgb(255, 252, 255),
         ];*/
-        let cls = vec![
+        /*let cls = vec![
             Color::from_rgb(255, 0, 0),
             Color::from_rgb(245, 150, 0),
             Color::from_rgb(245, 235, 0),
             Color::from_rgb(0, 245, 15),
             Color::from_rgb(0, 135, 245),
             Color::from_rgb(165, 0, 245),
-        ];
+        ];*/
 
         for i in 0..self.n as usize {
             mb.circle(
@@ -264,7 +287,7 @@ impl EventHandler for State {
                 Vec2::new(self.particles[i].pos.0 * 2000.0, self.particles[i].pos.1 * 2000.0), 
                 10.0,
                 1.0, 
-                cls[self.particles[i].color as usize]
+                self.cls[self.particles[i].color as usize]
             )?;
         }
         
@@ -313,4 +336,31 @@ impl EventHandler for State2 {
     fn draw(&mut self, _ctx: &mut Context) -> Result<(), GameError> {
         Ok(())
     }
+}
+
+fn hsv_to_rgb(h: f32, s: f32, v: f32) -> Color {
+    let c = v * s;
+    let h_prime = h / 60.0;
+    let x = c * (1.0 - (h_prime % 2.0 - 1.0).abs());
+    let m = v - c;
+
+    let (r1, g1, b1) = if h_prime >= 0.0 && h_prime < 1.0 {
+        (c, x, 0.0)
+    } else if h_prime >= 1.0 && h_prime < 2.0 {
+        (x, c, 0.0)
+    } else if h_prime >= 2.0 && h_prime < 3.0 {
+        (0.0, c, x)
+    } else if h_prime >= 3.0 && h_prime < 4.0 {
+        (0.0, x, c)
+    } else if h_prime >= 4.0 && h_prime < 5.0 {
+        (x, 0.0, c)
+    } else {
+        (c, 0.0, x)
+    };
+
+    let r = ((r1 + m) * 255.0).round() as u8;
+    let g = ((g1 + m) * 255.0).round() as u8;
+    let b = ((b1 + m) * 255.0).round() as u8;
+
+    Color::from_rgb(r, g, b)
 }
