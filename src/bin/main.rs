@@ -32,7 +32,7 @@ fn main() {
     // Create an instance of your event handler. 
     // Usually, you should provide it with the Context object to
     // use when setting your game up.
-    let my_game = State::new(&mut ctx, 1000, 20, /*2,*/ 0.040, 0.1).unwrap();
+    let my_game = State::new(&mut ctx, 3000, 20, /*2,*/ 0.040, 0.1).unwrap();
     
 
     /*std::thread::spawn(move || {
