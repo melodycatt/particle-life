@@ -1,6 +1,7 @@
 use glam::Vec2;
 use rand::prelude::*;
 use winit::dpi::PhysicalPosition;
+use std::env;
 
 use ggez::{
     conf::WindowMode,
@@ -20,6 +21,7 @@ use ggez::{
     *,
 };
 fn main() {
+    let args: Vec<String> = env::args().collect();
     // Make a Context.
     let (mut ctx, event_loop) = ContextBuilder::new("my_game", "Cool Game Author")
             .window_mode(WindowMode::default()
@@ -32,7 +34,8 @@ fn main() {
     // Create an instance of your event handler. 
     // Usually, you should provide it with the Context object to
     // use when setting your game up.
-    let my_game = State::new(&mut ctx, 3000, 4, /*2,*/ 0.040, 0.1).unwrap();
+    let my_game = if args[0] == "--snake" { State::new_snake(&mut ctx, 3000, 4, /*2,*/ 0.040, 0.1).unwrap() }
+                        else { State::new(&mut ctx, 3000, 4, /*2,*/ 0.040, 0.1).unwrap() };
     
 
     /*std::thread::spawn(move || {
@@ -143,6 +146,52 @@ impl State {
             n,
             n_colours,
         //    n_d,
+            particles: State::randomise_particles(n, n_colours),
+            attraction_matrix,
+            f_halflife,
+            f_factor: 0.5f32.powf(0.01 / f_halflife),
+            r_max,
+            fo_factor: 20.0,
+            dt: 0.01,
+            am_m,
+            window_drag_offset: (0.0, 0.0),
+            cls
+        })
+    }
+
+    fn new_snake(ctx: &mut Context, n: u32, n_colours: u8, /*n_d: u8,*/ f_halflife: f32, r_max: f32) -> GameResult<Self> {
+        //let attraction_matrix = State::randomise_matrix(n_colours);
+        let attraction_matrix = State::generate_snake_matrix(1.0, 0.5, 0.0, n_colours);
+
+        let mut cls: Vec<Color> = vec![];
+        let angle = 360.0 / n_colours as f32;
+        for i in 0..n_colours {
+            cls.push(hsv_to_rgb(i as f32 * angle, 1.0, 1.0))
+        }
+        
+        let mut am_mb = MeshBuilder::new();
+        am_mb.rectangle(graphics::DrawMode::fill(), Rect::new(2000.0, 0.0, 300.0, 300.0), Color::from_rgb(100, 100, 100))?;
+        for (i, item) in attraction_matrix.iter().enumerate() {
+            for (j, &jtem) in item.iter().enumerate() {
+                if jtem >= 0.0 {
+                    am_mb.rectangle(
+                        graphics::DrawMode::fill(), 
+                        Rect::new(2005.0 + j as f32 * 50.0, 5.0 + i as f32 * 50.0, 40.0, 40.0), 
+                        Color::from_rgb(0, (255.0 * jtem) as u8, 0)
+                    )?;
+                } else {
+                    am_mb.rectangle(
+                        graphics::DrawMode::fill(), 
+                        Rect::new(2005.0 + j as f32 * 50.0, 5.0 + i as f32 * 50.0, 40.0, 40.0), 
+                        Color::from_rgb((255.0 * jtem.abs()) as u8, 0, 0)
+                    )?;
+                }
+            }
+        }
+        let am_m = Mesh::from_data(ctx, am_mb.build());
+        Ok(State {
+            n,
+            n_colours,
             particles: State::randomise_particles(n, n_colours),
             attraction_matrix,
             f_halflife,
