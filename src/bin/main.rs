@@ -1,7 +1,7 @@
 use glam::Vec2;
 use rand::prelude::*;
 use winit::dpi::PhysicalPosition;
-use std::{env, io::Write, thread};
+use std::io::Write;
 
 use ggez::{
     conf::WindowMode,
@@ -84,7 +84,7 @@ struct State {
 
     cls: Vec<Color>,
 
-    quit: bool,
+//    quit: bool,
     /*positions: Vec<(f32, f32)>
     velocities: */
 }
@@ -173,7 +173,6 @@ impl State {
             am_m,
             window_drag_offset: (0.0, 0.0),
             cls,
-            quit: false,
         })
     }
 
@@ -220,7 +219,7 @@ impl State {
             am_m,
             window_drag_offset: (0.0, 0.0),
             cls,
-            quit: false,
+//            quit: false,
         })
     }
 
