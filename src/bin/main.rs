@@ -1,7 +1,7 @@
 use glam::Vec2;
 use rand::prelude::*;
 use winit::dpi::PhysicalPosition;
-use std::env;
+use std::{env, io::Write};
 
 use ggez::{
     conf::WindowMode,
@@ -13,7 +13,7 @@ use ggez::{
         self, Color, DrawParam, Mesh, MeshBuilder, Rect, Text
     }, 
     input::{
-        keyboard::KeyCode, mouse::MouseButton
+        keyboard::KeyCode, mouse::MouseButton, keyboard::KeyMods
     },
     Context, 
     ContextBuilder, 
@@ -21,7 +21,6 @@ use ggez::{
     *,
 };
 fn main() {
-    let args: Vec<String> = env::args().collect();
     // Make a Context.
     let (mut ctx, event_loop) = ContextBuilder::new("my_game", "Cool Game Author")
             .window_mode(WindowMode::default()
@@ -34,9 +33,34 @@ fn main() {
     // Create an instance of your event handler. 
     // Usually, you should provide it with the Context object to
     // use when setting your game up.
-    println!("{:#?}", args);
-    let my_game = if args[1] == "snake" { State::new_snake(&mut ctx, 3000, 4, /*2,*/ 0.040, 0.1).unwrap() }
-                        else { State::new(&mut ctx, 3000, 4, /*2,*/ 0.040, 0.1).unwrap() };
+    //println!("{:#?}", args);
+    let mut particles_in = String::new();
+    print!("# of Particles (default = 3000): ");
+    std::io::stdout().flush().expect("poo");
+    std::io::stdin().read_line(&mut particles_in).expect("poo");
+    let particles: u32 = if particles_in == "\n" { 3000 } else { particles_in.trim().parse().expect("not a number!") }; 
+    let mut colours_in = String::new();
+    print!("# of Colours (default = 6): ");
+    std::io::stdout().flush().expect("poo");
+    std::io::stdin().read_line(&mut colours_in).expect("poo");
+    let colours: u8 = if colours_in == "\n" { 6 } else { colours_in.trim().parse().expect("not a number!") }; 
+    let mut rmax_in = String::new();
+    print!("Attraction radius (default = 0.1): ");
+    std::io::stdout().flush().expect("poo");
+    std::io::stdin().read_line(&mut rmax_in).expect("poo");
+    let rmax: f32 = if rmax_in == "\n" { 0.1 } else { rmax_in.trim().parse().expect("not a number!") }; 
+    let mut fhl_in = String::new();
+    print!("Friction Half-Life (default = 0.040): ");
+    std::io::stdout().flush().expect("poo");
+    std::io::stdin().read_line(&mut fhl_in).expect("poo");
+    let fhl: f32 = if fhl_in == "\n" { 0.04 } else { fhl_in.trim().parse().expect("not a number!") }; 
+    let mut snake = String::new();
+    print!("Snake? (y/n): ");
+    std::io::stdout().flush().expect("poo");
+    std::io::stdin().read_line(&mut snake).expect("poo");
+
+    let my_game = if snake == "y\n" { State::new_snake(&mut ctx, particles, colours, /*2,*/ fhl, rmax).unwrap() }
+                            else { State::new(&mut ctx, particles, colours, /*2,*/ fhl, rmax).unwrap() };
     
 
     /*std::thread::spawn(move || {
@@ -198,7 +222,7 @@ impl State {
             f_halflife,
             f_factor: 0.5f32.powf(0.01 / f_halflife),
             r_max,
-            fo_factor: 20.0,
+            fo_factor: 10.0,
             dt: 0.01,
             am_m,
             window_drag_offset: (0.0, 0.0),
@@ -257,12 +281,11 @@ impl State {
             a * (1.0 - (2.0 * r - 1.0 - beta).abs() / (1.0 - beta))
         } else {0.0}
     }
-}
 
-impl EventHandler for State {
-    fn update(&mut self, ctx: &mut Context) -> Result<(), GameError> {
-        let m_ctx = &ctx.mouse;
-        let k_ctx = &ctx.keyboard;
+    #[inline(always)]
+    fn handle_keys(&mut self, ctx: &mut Context) -> Result<(), GameError> {
+        let m_ctx = & ctx.mouse;
+        let k_ctx = & ctx.keyboard;
 
         if k_ctx.is_key_just_pressed(KeyCode::Period) {
             self.fo_factor = match self.fo_factor {
@@ -303,12 +326,30 @@ impl EventHandler for State {
             };
         }
 
+        if k_ctx.is_key_just_pressed(KeyCode::Minus) && self.n > 0 {
+            self.particles.truncate((self.n - if k_ctx.is_mod_active(KeyMods::SHIFT) { 50 } else { 150 }) as usize);
+            self.n -= if k_ctx.is_mod_active(KeyMods::SHIFT) { 50 } else { 150 };
+        }
+        if k_ctx.is_key_just_pressed(KeyCode::Equals) {
+            let mut new_particles = State::randomise_particles(if k_ctx.is_mod_active(KeyMods::SHIFT) { 50 } else { 150 }, self.n_colours);
+            self.particles.append(&mut new_particles);
+            self.n += if k_ctx.is_mod_active(KeyMods::SHIFT) { 50 } else { 150 };
+        }
+
         if m_ctx.button_pressed(MouseButton::Left) {
             let current_pos = ctx.gfx.window_position().unwrap();
             let pos = PhysicalPosition::new(current_pos.x + m_ctx.delta().x as i32 + self.window_drag_offset.0 as i32, current_pos.y + m_ctx.delta().y as i32 + self.window_drag_offset.1 as i32);
             self.window_drag_offset = (m_ctx.delta().x + self.window_drag_offset.0, m_ctx.delta().y + self.window_drag_offset.1);
             ctx.gfx.set_window_position(pos)?;
         }
+
+        Ok(())
+    }
+}
+
+impl EventHandler for State {
+    fn update(&mut self, ctx: &mut Context) -> Result<(), GameError> {
+        self.handle_keys(ctx)?;
         
         let f_fact = self.r_max * self.fo_factor * self.dt;
         //let iterp = self.particles.iter();
@@ -396,6 +437,12 @@ impl EventHandler for State {
         text5.set_scale(25.0);
         let mut text6 = Text::new(format!("FPS: {:?}", ctx.time.fps()));
         text6.set_scale(25.0);
+        let mut text7 = Text::new(format!("Use < and > to speed up and slow down the sim"));
+        text7.set_scale(25.0);
+        let mut text8 = Text::new(format!("Use + and - to add and remove particles, use shift for precise"));
+        text8.set_scale(25.0);
+        /*let mut text9 = Text::new(format!("Debug - use shift < and > to change the dt"));
+        text9.set_scale(25.0);*/
 
         canvas.draw(&Mesh::from_data(ctx, mb.build()), DrawParam::default());
         canvas.draw(&self.am_m, DrawParam::default());
@@ -406,6 +453,9 @@ impl EventHandler for State {
         canvas.draw(&text4, DrawParam::default().dest(Vec2::new(30.0, 120.0)).color(Color::WHITE));
         canvas.draw(&text5, DrawParam::default().dest(Vec2::new(30.0, 150.0)).color(Color::WHITE));
         canvas.draw(&text6, DrawParam::default().dest(Vec2::new(30.0, 180.0)).color(Color::WHITE));
+        canvas.draw(&text7, DrawParam::default().dest(Vec2::new(30.0, 210.0)).color(Color::WHITE));
+        canvas.draw(&text8, DrawParam::default().dest(Vec2::new(30.0, 240.0)).color(Color::WHITE));
+        //canvas.draw(&text9, DrawParam::default().dest(Vec2::new(30.0, 1960.0)).color(Color::WHITE));
         // Draw code here...
         canvas.finish(ctx)
     }
