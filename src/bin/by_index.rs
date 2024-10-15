@@ -9,16 +9,10 @@ use ggez::{
         EventHandler 
     }, 
     graphics:: {
-        self, Canvas, Color, DrawParam, Drawable, Mesh, MeshBuilder, Rect, Text
+        self, Color, DrawParam, Mesh, MeshBuilder, Rect, Text
     }, 
     input::{
-        keyboard::{ 
-            KeyCode, 
-            KeyboardContext 
-        }, mouse::{ 
-            MouseButton, 
-            MouseContext 
-        }
+        keyboard::KeyCode, mouse::MouseButton
     },
     Context, 
     ContextBuilder, 
@@ -38,7 +32,7 @@ fn main() {
     // Create an instance of your event handler. 
     // Usually, you should provide it with the Context object to
     // use when setting your game up.
-    let my_game = State::new(&mut ctx, 3000, 20, /*2,*/ 0.040, 0.1).unwrap();
+    let my_game = State::new(&mut ctx, 3000, 20, /*2,*/ 0.040, 0.05).unwrap();
     
 
     /*std::thread::spawn(move || {
@@ -153,7 +147,7 @@ impl State {
             f_halflife,
             f_factor: 0.5f32.powf(0.01 / f_halflife),
             r_max,
-            fo_factor: 200.0,
+            fo_factor: 20.0,
             dt: 0.01,
             am_m,
             window_drag_offset: (0.0, 0.0),
@@ -161,7 +155,7 @@ impl State {
         })
     }
 
-    fn randomise_matrix(n_colours: u8) -> Vec<Vec<f32>> {
+    fn _randomise_matrix(n_colours: u8) -> Vec<Vec<f32>> {
         let mut rng = rand::thread_rng();
         let mut matrix: Vec<Vec<f32>> = vec![];
         for _i in 0..n_colours {
@@ -294,8 +288,8 @@ impl EventHandler for State {
             self.particles[i].vel.1 = self.particles[i].vel.1 * self.f_factor + total_fy;
         }
         for i in 0..self.n as usize {
-            self.particles[i].pos.0 = (self.particles[i].pos.0 + self.particles[i].vel.0 * self.dt).min(1.0).max(0.0);
-            self.particles[i].pos.1 = (self.particles[i].pos.1 + self.particles[i].vel.1 * self.dt).min(1.0).max(0.0); 
+            self.particles[i].pos.0 = (self.particles[i].pos.0 + self.particles[i].vel.0 * self.dt).clamp(0.0, 1.0);
+            self.particles[i].pos.1 = (self.particles[i].pos.1 + self.particles[i].vel.1 * self.dt).clamp(0.0, 1.0); 
             self.particles[i].vel.0 = if self.particles[i].pos.0 == 0.0 || self.particles[i].pos.0 == 1.0 { 0.0 } else { self.particles[i].vel.0 };
             self.particles[i].vel.1 = if self.particles[i].pos.1 == 0.0 || self.particles[i].pos.1 == 1.0 { 0.0 } else { self.particles[i].vel.1 };
         }

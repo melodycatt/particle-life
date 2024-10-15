@@ -32,7 +32,7 @@ fn main() {
     // Create an instance of your event handler. 
     // Usually, you should provide it with the Context object to
     // use when setting your game up.
-    let my_game = State::new(&mut ctx, 3000, 20, /*2,*/ 0.040, 0.1).unwrap();
+    let my_game = State::new(&mut ctx, 3000, 4, /*2,*/ 0.040, 0.1).unwrap();
     
 
     /*std::thread::spawn(move || {
@@ -86,8 +86,8 @@ impl State {
         let n2_a = 0.0;
         let n_a = 0.5;*/
 
-        //let attraction_matrix = State::randomise_matrix(n_colours);
-        let attraction_matrix = State::generate_snake_matrix(1.0, 0.5, 0.0, n_colours);
+        let attraction_matrix = State::randomise_matrix(n_colours);
+        //let attraction_matrix = State::generate_snake_matrix(1.0, 0.5, 0.0, n_colours);
 
         let mut cls: Vec<Color> = vec![];
         let angle = 360.0 / n_colours as f32;
@@ -156,7 +156,7 @@ impl State {
         })
     }
 
-    fn _randomise_matrix(n_colours: u8) -> Vec<Vec<f32>> {
+    fn randomise_matrix(n_colours: u8) -> Vec<Vec<f32>> {
         let mut rng = rand::thread_rng();
         let mut matrix: Vec<Vec<f32>> = vec![];
         for _i in 0..n_colours {
@@ -201,7 +201,7 @@ impl State {
         matrix
     }
 
-    #[inline]
+    #[inline(always)]
     fn calculate_force(r: f32, a: f32) -> f32 {
         let beta = 0.3;
         if r < beta {
@@ -289,10 +289,16 @@ impl EventHandler for State {
             particle.vel.1 = particle.vel.1 * self.f_factor + total_fy;
         }
         for particle in self.particles.iter_mut() {
+            particle.pos.0 +=  particle.vel.0 * self.dt;
+            particle.pos.1 +=  particle.vel.1 * self.dt;
+
+            //// CLAMP
+            /*
             particle.pos.0 = (particle.pos.0 + particle.vel.0 * self.dt).clamp(0.0, 1.0);
             particle.pos.1 = (particle.pos.1 + particle.vel.1 * self.dt).clamp(0.0, 1.0);
             particle.vel.0 = if particle.pos.0 == 0.0 || particle.pos.0 == 1.0 { 0.0 } else { particle.vel.0 };
             particle.vel.1 = if particle.pos.1 == 0.0 || particle.pos.1 == 1.0 { 0.0 } else { particle.vel.1 };
+            */
         }
         Ok(())
     }
