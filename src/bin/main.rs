@@ -1,7 +1,7 @@
 use glam::Vec2;
 use rand::prelude::*;
 use winit::dpi::PhysicalPosition;
-use std::{env, io::Write};
+use std::{env, io::Write, thread};
 
 use ggez::{
     conf::WindowMode,
@@ -21,18 +21,6 @@ use ggez::{
     *,
 };
 fn main() {
-    // Make a Context.
-    let (mut ctx, event_loop) = ContextBuilder::new("my_game", "Cool Game Author")
-            .window_mode(WindowMode::default()
-                .dimensions(2300.0, 2000.0)
-                .borderless(true)
-            )
-        .build()
-        .expect("aieee, could not create ggez context!");
-    
-    // Create an instance of your event handler. 
-    // Usually, you should provide it with the Context object to
-    // use when setting your game up.
     //println!("{:#?}", args);
     let mut particles_in = String::new();
     print!("# of Particles (default = 3000): ");
@@ -58,17 +46,19 @@ fn main() {
     print!("Snake? (y/n): ");
     std::io::stdout().flush().expect("poo");
     std::io::stdin().read_line(&mut snake).expect("poo");
-
+    
+    // Make a Context.
+    let (mut ctx, event_loop) = ContextBuilder::new("my_game", "Cool Game Author")
+            .window_mode(WindowMode::default()
+                .dimensions(2300.0, 2000.0)
+                .borderless(true)
+            )
+        .build()
+        .expect("aieee, could not create ggez context!");
     let my_game = if snake == "y\n" { State::new_snake(&mut ctx, particles, colours, /*2,*/ fhl, rmax).unwrap() }
                             else { State::new(&mut ctx, particles, colours, /*2,*/ fhl, rmax).unwrap() };
     
-
-    /*std::thread::spawn(move || {
-        event::run(ctx2, event_loop2, my_game2);
-    }); */   
-    // Run!
     event::run(ctx, event_loop, my_game);
-
 }
 
 #[derive(Debug)]
@@ -92,7 +82,9 @@ struct State {
 
     window_drag_offset: (f32, f32),
 
-    cls: Vec<Color>
+    cls: Vec<Color>,
+
+    quit: bool,
     /*positions: Vec<(f32, f32)>
     velocities: */
 }
@@ -176,11 +168,12 @@ impl State {
             f_halflife,
             f_factor: 0.5f32.powf(0.01 / f_halflife),
             r_max,
-            fo_factor: 20.0,
+            fo_factor: 10.0,
             dt: 0.01,
             am_m,
             window_drag_offset: (0.0, 0.0),
-            cls
+            cls,
+            quit: false,
         })
     }
 
@@ -226,7 +219,8 @@ impl State {
             dt: 0.01,
             am_m,
             window_drag_offset: (0.0, 0.0),
-            cls
+            cls,
+            quit: false,
         })
     }
 
@@ -247,6 +241,18 @@ impl State {
         let mut rng = rand::thread_rng();
         let mut particles: Vec<Particle> = vec![];
         for i in 0..n {
+            let mut p = Particle::new(i);
+            p.pos = (rng.gen::<f32>(), rng.gen::<f32>());
+            p.color = (rng.gen::<f32>() * n_colours as f32).floor() as u8;
+            particles.push(p);
+        }
+        particles
+    }
+
+    fn add_particles(&self, n: u32, n_colours: u8) -> Vec<Particle> {
+        let mut rng = rand::thread_rng();
+        let mut particles: Vec<Particle> = vec![];
+        for i in self.n..(self.n + n) {
             let mut p = Particle::new(i);
             p.pos = (rng.gen::<f32>(), rng.gen::<f32>());
             p.color = (rng.gen::<f32>() * n_colours as f32).floor() as u8;
@@ -284,8 +290,8 @@ impl State {
 
     #[inline(always)]
     fn handle_keys(&mut self, ctx: &mut Context) -> Result<(), GameError> {
-        let m_ctx = & ctx.mouse;
-        let k_ctx = & ctx.keyboard;
+        let m_ctx = &ctx.mouse;
+        let k_ctx = &ctx.keyboard;
 
         if k_ctx.is_key_just_pressed(KeyCode::Period) {
             self.fo_factor = match self.fo_factor {
@@ -331,7 +337,7 @@ impl State {
             self.n -= if k_ctx.is_mod_active(KeyMods::SHIFT) { 50 } else { 150 };
         }
         if k_ctx.is_key_just_pressed(KeyCode::Equals) {
-            let mut new_particles = State::randomise_particles(if k_ctx.is_mod_active(KeyMods::SHIFT) { 50 } else { 150 }, self.n_colours);
+            let mut new_particles = self.add_particles(if k_ctx.is_mod_active(KeyMods::SHIFT) { 50 } else { 150 }, self.n_colours);
             self.particles.append(&mut new_particles);
             self.n += if k_ctx.is_mod_active(KeyMods::SHIFT) { 50 } else { 150 };
         }
@@ -441,7 +447,7 @@ impl EventHandler for State {
         text7.set_scale(25.0);
         let mut text8 = Text::new(format!("Use + and - to add and remove particles, use shift for precise"));
         text8.set_scale(25.0);
-        /*let mut text9 = Text::new(format!("Debug - use shift < and > to change the dt"));
+        /*let mut text9 = Text::new(format!("R to restart"));
         text9.set_scale(25.0);*/
 
         canvas.draw(&Mesh::from_data(ctx, mb.build()), DrawParam::default());
@@ -459,6 +465,7 @@ impl EventHandler for State {
         // Draw code here...
         canvas.finish(ctx)
     }
+
 }
 
 impl Particle {
