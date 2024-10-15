@@ -9,16 +9,10 @@ use ggez::{
         EventHandler 
     }, 
     graphics:: {
-        self, Canvas, Color, DrawParam, Drawable, Mesh, MeshBuilder, Rect, Text
+        self, Color, DrawParam, Drawable, Mesh, MeshBuilder, Rect, Text
     }, 
     input::{
-        keyboard::{ 
-            KeyCode, 
-            KeyboardContext 
-        }, mouse::{ 
-            MouseButton, 
-            MouseContext 
-        }
+        keyboard::KeyCode, mouse::MouseButton
     },
     Context, 
     ContextBuilder, 
@@ -85,12 +79,12 @@ struct Particle {
 
 impl State {
     fn new(ctx: &mut Context, n: u32, n_colours: u8, n_d: u8, f_halflife: f32, r_max: f32) -> GameResult<Self> {
-        let s_a = 1.0;
+        /*let s_a = 1.0;
         let p_a = 0.0;
         let p2_a = 0.0;
         //let m_a = 0.0;
         let n2_a = 0.0;
-        let n_a = 0.5;
+        let n_a = 0.5;*/
 
         //let attraction_matrix = State::randomise_matrix(n_colours);
         let attraction_matrix = State::generate_snake_matrix(1.0, 0.5, 0.0, n_colours);
