@@ -34,7 +34,8 @@ fn main() {
     // Create an instance of your event handler. 
     // Usually, you should provide it with the Context object to
     // use when setting your game up.
-    let my_game = if args[0] == "--snake" { State::new_snake(&mut ctx, 3000, 4, /*2,*/ 0.040, 0.1).unwrap() }
+    println!("{:#?}", args);
+    let my_game = if args[1] == "snake" { State::new_snake(&mut ctx, 3000, 4, /*2,*/ 0.040, 0.1).unwrap() }
                         else { State::new(&mut ctx, 3000, 4, /*2,*/ 0.040, 0.1).unwrap() };
     
 
@@ -215,7 +216,6 @@ impl State {
             }
             matrix.push(row);
         }
-        println!("{:#?}", matrix);
         matrix
     }
 
@@ -226,8 +226,6 @@ impl State {
             let mut p = Particle::new(i);
             p.pos = (rng.gen::<f32>(), rng.gen::<f32>());
             p.color = (rng.gen::<f32>() * n_colours as f32).floor() as u8;
-            if p.color == n_colours - 1 { println!("nvm")}
-            println!("{:?}", p.color);
             particles.push(p);
         }
         particles
