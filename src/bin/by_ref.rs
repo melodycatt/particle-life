@@ -9,7 +9,7 @@ use ggez::{
         EventHandler 
     }, 
     graphics:: {
-        self, Color, DrawParam, Drawable, Mesh, MeshBuilder, Rect, Text
+        self, Color, DrawParam, Mesh, MeshBuilder, Rect, Text
     }, 
     input::{
         keyboard::KeyCode, mouse::MouseButton
@@ -32,7 +32,7 @@ fn main() {
     // Create an instance of your event handler. 
     // Usually, you should provide it with the Context object to
     // use when setting your game up.
-    let my_game = State::new(&mut ctx, 1000, 20, 2, 0.040, 0.1).unwrap();
+    let my_game = State::new(&mut ctx, 1000, 20, /*2,*/ 0.040, 0.1).unwrap();
     
 
     /*std::thread::spawn(move || {
@@ -47,7 +47,7 @@ fn main() {
 struct State {
     n: u32, // number of particles 
     n_colours: u8, // number of colours
-    n_d: u8, // number of dimensions
+//    n_d: u8, // number of dimensions
 
     particles: Vec<Particle>,
 
@@ -78,7 +78,7 @@ struct Particle {
 }
 
 impl State {
-    fn new(ctx: &mut Context, n: u32, n_colours: u8, n_d: u8, f_halflife: f32, r_max: f32) -> GameResult<Self> {
+    fn new(ctx: &mut Context, n: u32, n_colours: u8, /*n_d: u8,*/ f_halflife: f32, r_max: f32) -> GameResult<Self> {
         /*let s_a = 1.0;
         let p_a = 0.0;
         let p2_a = 0.0;
@@ -142,7 +142,7 @@ impl State {
         Ok(State {
             n,
             n_colours,
-            n_d,
+        //    n_d,
             particles: State::randomise_particles(n, n_colours),
             attraction_matrix,
             f_halflife,
@@ -156,7 +156,7 @@ impl State {
         })
     }
 
-    fn randomise_matrix(n_colours: u8) -> Vec<Vec<f32>> {
+    fn _randomise_matrix(n_colours: u8) -> Vec<Vec<f32>> {
         let mut rng = rand::thread_rng();
         let mut matrix: Vec<Vec<f32>> = vec![];
         for _i in 0..n_colours {
@@ -189,7 +189,7 @@ impl State {
 
         for i in 0..n_colours as usize {
             let mut row: Vec<f32> = vec![];
-            for j in 0..n_colours as usize {
+            for _j in 0..n_colours as usize {
                 row.push(0.0);
             }
             row[i] = s_a;
@@ -289,8 +289,8 @@ impl EventHandler for State {
             particle.vel.1 = particle.vel.1 * self.f_factor + total_fy;
         }
         for particle in self.particles.iter_mut() {
-            particle.pos.0 = (particle.pos.0 + particle.vel.0 * self.dt).min(1.0).max(0.0);
-            particle.pos.1 = (particle.pos.1 + particle.vel.1 * self.dt).min(1.0).max(0.0); 
+            particle.pos.0 = (particle.pos.0 + particle.vel.0 * self.dt).clamp(0.0, 1.0);
+            particle.pos.1 = (particle.pos.1 + particle.vel.1 * self.dt).clamp(0.0, 1.0);
             particle.vel.0 = if particle.pos.0 == 0.0 || particle.pos.0 == 1.0 { 0.0 } else { particle.vel.0 };
             particle.vel.1 = if particle.pos.1 == 0.0 || particle.pos.1 == 1.0 { 0.0 } else { particle.vel.1 };
         }

@@ -9,16 +9,10 @@ use ggez::{
         EventHandler 
     }, 
     graphics:: {
-        self, Canvas, Color, DrawParam, Drawable, Mesh, MeshBuilder, Rect, Text
+        self, Color, DrawParam, Mesh, MeshBuilder, Rect, Text
     }, 
     input::{
-        keyboard::{ 
-            KeyCode, 
-            KeyboardContext 
-        }, mouse::{ 
-            MouseButton, 
-            MouseContext 
-        }
+        keyboard::KeyCode, mouse::MouseButton
     },
     Context, 
     ContextBuilder, 
@@ -38,7 +32,7 @@ fn main() {
     // Create an instance of your event handler. 
     // Usually, you should provide it with the Context object to
     // use when setting your game up.
-    let my_game = State::new(&mut ctx, 3000, 255, /*2,*/ 0.040, 0.1).unwrap();
+    let my_game = State::new(&mut ctx, 1000, 20, /*2,*/ 0.040, 0.1).unwrap();
     
 
     /*std::thread::spawn(move || {
@@ -75,11 +69,12 @@ struct State {
     velocities: */
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Particle {
     pos: (f32, f32),
     vel: (f32, f32),
-    color: u8
+    color: u8,
+    id: u32
 }
 
 impl State {
@@ -147,13 +142,13 @@ impl State {
         Ok(State {
             n,
             n_colours,
-//            n_d,
+        //    n_d,
             particles: State::randomise_particles(n, n_colours),
             attraction_matrix,
             f_halflife,
             f_factor: 0.5f32.powf(0.01 / f_halflife),
             r_max,
-            fo_factor: 200.0,
+            fo_factor: 20.0,
             dt: 0.01,
             am_m,
             window_drag_offset: (0.0, 0.0),
@@ -161,7 +156,7 @@ impl State {
         })
     }
 
-    fn randomise_matrix(n_colours: u8) -> Vec<Vec<f32>> {
+    fn _randomise_matrix(n_colours: u8) -> Vec<Vec<f32>> {
         let mut rng = rand::thread_rng();
         let mut matrix: Vec<Vec<f32>> = vec![];
         for _i in 0..n_colours {
@@ -178,8 +173,8 @@ impl State {
     fn randomise_particles(n: u32, n_colours: u8) -> Vec<Particle> {
         let mut rng = rand::thread_rng();
         let mut particles: Vec<Particle> = vec![];
-        for _i in 0..n {
-            let mut p = Particle::new();
+        for i in 0..n {
+            let mut p = Particle::new(i);
             p.pos = (rng.gen::<f32>(), rng.gen::<f32>());
             p.color = (rng.gen::<f32>() * n_colours as f32).floor() as u8;
             if p.color == n_colours - 1 { println!("nvm")}
@@ -260,9 +255,6 @@ impl EventHandler for State {
                 _ => 0.3
             };
         }
-        /*if k_ctx.is_key_just_pressed(KeyCode::Equals) {
-            
-        }*/
 
         if m_ctx.button_pressed(MouseButton::Left) {
             let current_pos = ctx.gfx.window_position().unwrap();
@@ -272,32 +264,35 @@ impl EventHandler for State {
         }
         
         let f_fact = self.r_max * self.fo_factor * self.dt;
-        for i in 0..self.n as usize {
-            let col_usize = self.particles[i].color as usize;
+        //let iterp = self.particles.iter();
+        let check_vec = self.particles.clone();
+        for particle in self.particles.iter_mut() {
+            let col_usize = particle.color as usize;
             let mut total_fx = 0.0;
             let mut total_fy = 0.0;
-    
-            for j in 0..self.n as usize {
-                if j == i { continue; }
-                let rx = self.particles[j].pos.0 - self.particles[i].pos.0;
-                let ry = self.particles[j].pos.1 - self.particles[i].pos.1;
+            
+            for check in check_vec.iter() {
+                if check.id == particle.id { continue; }
+                let rx = check.pos.0 - particle.pos.0;
+                let ry = check.pos.1 - particle.pos.1;
                 let r = (rx.powi(2) + ry.powi(2)).sqrt();
                 if r > 0.0 && r < self.r_max {
-                    let f = State::calculate_force(r / self.r_max, self.attraction_matrix[col_usize][self.particles[j].color as usize]);
+                    let f = State::calculate_force(r / self.r_max, self.attraction_matrix[col_usize][check.color as usize]);
                     total_fx += rx / r * f;
                     total_fy += ry / r * f;
                 }
             }    
+            
             total_fx *= f_fact;
             total_fy *= f_fact;
-            self.particles[i].vel.0 = self.particles[i].vel.0 * self.f_factor + total_fx;
-            self.particles[i].vel.1 = self.particles[i].vel.1 * self.f_factor + total_fy;
+            particle.vel.0 = particle.vel.0 * self.f_factor + total_fx;
+            particle.vel.1 = particle.vel.1 * self.f_factor + total_fy;
         }
-        for i in 0..self.n as usize {
-            self.particles[i].pos.0 = (self.particles[i].pos.0 + self.particles[i].vel.0 * self.dt).min(1.0).max(0.0);
-            self.particles[i].pos.1 = (self.particles[i].pos.1 + self.particles[i].vel.1 * self.dt).min(1.0).max(0.0); 
-            self.particles[i].vel.0 = if self.particles[i].pos.0 == 0.0 || self.particles[i].pos.0 == 1.0 { 0.0 } else { self.particles[i].vel.0 };
-            self.particles[i].vel.1 = if self.particles[i].pos.1 == 0.0 || self.particles[i].pos.1 == 1.0 { 0.0 } else { self.particles[i].vel.1 };
+        for particle in self.particles.iter_mut() {
+            particle.pos.0 = (particle.pos.0 + particle.vel.0 * self.dt).clamp(0.0, 1.0);
+            particle.pos.1 = (particle.pos.1 + particle.vel.1 * self.dt).clamp(0.0, 1.0);
+            particle.vel.0 = if particle.pos.0 == 0.0 || particle.pos.0 == 1.0 { 0.0 } else { particle.vel.0 };
+            particle.vel.1 = if particle.pos.1 == 0.0 || particle.pos.1 == 1.0 { 0.0 } else { particle.vel.1 };
         }
         Ok(())
     }
@@ -364,11 +359,12 @@ impl EventHandler for State {
 }
 
 impl Particle {
-    fn new() -> Particle {
+    fn new(id: u32) -> Particle {
         Particle {
             pos: (0.0, 0.0),
             vel: (0.0, 0.0),
-            color: 0
+            color: 0,
+            id
         }
     }
 }
