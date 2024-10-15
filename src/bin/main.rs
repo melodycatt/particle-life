@@ -26,22 +26,28 @@ fn main() {
     print!("# of Particles (default = 3000): ");
     std::io::stdout().flush().expect("poo");
     std::io::stdin().read_line(&mut particles_in).expect("poo");
-    let particles: u32 = if particles_in == "\n" { 3000 } else { particles_in.trim().parse().expect("not a number!") }; 
+    println!("{:?}", particles_in);
+    let particles: u32 = if particles_in == "\n" || particles_in == "\r\n" { 3000 } else { particles_in.trim().parse().expect("not a number!") }; 
     let mut colours_in = String::new();
     print!("# of Colours (default = 6): ");
     std::io::stdout().flush().expect("poo");
     std::io::stdin().read_line(&mut colours_in).expect("poo");
-    let colours: u8 = if colours_in == "\n" { 6 } else { colours_in.trim().parse().expect("not a number!") }; 
+    let colours: u8 = if colours_in == "\n" || colours_in == "\r\n" { 6 } else { colours_in.trim().parse().expect("not a number!") }; 
     let mut rmax_in = String::new();
     print!("Attraction radius (default = 0.1): ");
     std::io::stdout().flush().expect("poo");
     std::io::stdin().read_line(&mut rmax_in).expect("poo");
-    let rmax: f32 = if rmax_in == "\n" { 0.1 } else { rmax_in.trim().parse().expect("not a number!") }; 
+    let rmax: f32 = if rmax_in == "\n" || rmax_in == "\r\n" { 0.1 } else { rmax_in.trim().parse().expect("not a number!") }; 
     let mut fhl_in = String::new();
     print!("Friction Half-Life (default = 0.040): ");
     std::io::stdout().flush().expect("poo");
     std::io::stdin().read_line(&mut fhl_in).expect("poo");
-    let fhl: f32 = if fhl_in == "\n" { 0.04 } else { fhl_in.trim().parse().expect("not a number!") }; 
+    let fhl: f32 = if fhl_in == "\n" || fhl_in == "\r\n" { 0.04 } else { fhl_in.trim().parse().expect("not a number!") }; 
+    let mut dim_in = String::new();
+    print!("Width and height (square window, default = 2000.0): ");
+    std::io::stdout().flush().expect("poo");
+    std::io::stdin().read_line(&mut dim_in).expect("poo");
+    let dim: f32 = if dim_in == "\n" || dim_in == "\r\n" { 0.04 } else { dim_in.trim().parse().expect("not a number!") }; 
     let mut snake = String::new();
     print!("Snake? (y/n): ");
     std::io::stdout().flush().expect("poo");
@@ -50,13 +56,13 @@ fn main() {
     // Make a Context.
     let (mut ctx, event_loop) = ContextBuilder::new("my_game", "Cool Game Author")
             .window_mode(WindowMode::default()
-                .dimensions(2300.0, 2000.0)
+                .dimensions(dim + 300.0, dim)
                 .borderless(true)
             )
         .build()
         .expect("aieee, could not create ggez context!");
-    let my_game = if snake == "y\n" { State::new_snake(&mut ctx, particles, colours, /*2,*/ fhl, rmax).unwrap() }
-                            else { State::new(&mut ctx, particles, colours, /*2,*/ fhl, rmax).unwrap() };
+    let my_game = if snake == "y\n" || snake == "y\r\n" { State::new_snake(&mut ctx, particles, colours, /*2,*/ fhl, rmax, dim).unwrap() }
+                            else { State::new(&mut ctx, particles, colours, /*2,*/ fhl, rmax, dim).unwrap() };
     
     event::run(ctx, event_loop, my_game);
 }
@@ -84,6 +90,7 @@ struct State {
 
     cls: Vec<Color>,
 
+    dim: f32,
 //    quit: bool,
     /*positions: Vec<(f32, f32)>
     velocities: */
@@ -98,7 +105,7 @@ struct Particle {
 }
 
 impl State {
-    fn new(ctx: &mut Context, n: u32, n_colours: u8, /*n_d: u8,*/ f_halflife: f32, r_max: f32) -> GameResult<Self> {
+    fn new(ctx: &mut Context, n: u32, n_colours: u8, /*n_d: u8,*/ f_halflife: f32, r_max: f32, dim: f32) -> GameResult<Self> {
         /*let s_a = 1.0;
         let p_a = 0.0;
         let p2_a = 0.0;
@@ -140,19 +147,19 @@ impl State {
         ];*/
 
         let mut am_mb = MeshBuilder::new();
-        am_mb.rectangle(graphics::DrawMode::fill(), Rect::new(2000.0, 0.0, 300.0, 300.0), Color::from_rgb(100, 100, 100))?;
+        am_mb.rectangle(graphics::DrawMode::fill(), Rect::new(dim, 0.0, 300.0, 300.0), Color::from_rgb(100, 100, 100))?;
         for (i, item) in attraction_matrix.iter().enumerate() {
             for (j, &jtem) in item.iter().enumerate() {
                 if jtem >= 0.0 {
                     am_mb.rectangle(
                         graphics::DrawMode::fill(), 
-                        Rect::new(2005.0 + j as f32 * 50.0, 5.0 + i as f32 * 50.0, 40.0, 40.0), 
+                        Rect::new(dim + 5.0 + j as f32 * 50.0, 5.0 + i as f32 * 50.0, 40.0, 40.0), 
                         Color::from_rgb(0, (255.0 * jtem) as u8, 0)
                     )?;
                 } else {
                     am_mb.rectangle(
                         graphics::DrawMode::fill(), 
-                        Rect::new(2005.0 + j as f32 * 50.0, 5.0 + i as f32 * 50.0, 40.0, 40.0), 
+                        Rect::new(dim + 05.0 + j as f32 * 50.0, 5.0 + i as f32 * 50.0, 40.0, 40.0), 
                         Color::from_rgb((255.0 * jtem.abs()) as u8, 0, 0)
                     )?;
                 }
@@ -173,10 +180,11 @@ impl State {
             am_m,
             window_drag_offset: (0.0, 0.0),
             cls,
+            dim,
         })
     }
 
-    fn new_snake(ctx: &mut Context, n: u32, n_colours: u8, /*n_d: u8,*/ f_halflife: f32, r_max: f32) -> GameResult<Self> {
+    fn new_snake(ctx: &mut Context, n: u32, n_colours: u8, /*n_d: u8,*/ f_halflife: f32, r_max: f32, dim: f32) -> GameResult<Self> {
         //let attraction_matrix = State::randomise_matrix(n_colours);
         let attraction_matrix = State::generate_snake_matrix(1.0, 0.5, 0.0, n_colours);
 
@@ -187,19 +195,19 @@ impl State {
         }
         
         let mut am_mb = MeshBuilder::new();
-        am_mb.rectangle(graphics::DrawMode::fill(), Rect::new(2000.0, 0.0, 300.0, 300.0), Color::from_rgb(100, 100, 100))?;
+        am_mb.rectangle(graphics::DrawMode::fill(), Rect::new(dim, 0.0, 300.0, 300.0), Color::from_rgb(100, 100, 100))?;
         for (i, item) in attraction_matrix.iter().enumerate() {
             for (j, &jtem) in item.iter().enumerate() {
                 if jtem >= 0.0 {
                     am_mb.rectangle(
                         graphics::DrawMode::fill(), 
-                        Rect::new(2005.0 + j as f32 * 50.0, 5.0 + i as f32 * 50.0, 40.0, 40.0), 
+                        Rect::new(dim + 5.0 + j as f32 * 50.0, 5.0 + i as f32 * 50.0, 40.0, 40.0), 
                         Color::from_rgb(0, (255.0 * jtem) as u8, 0)
                     )?;
                 } else {
                     am_mb.rectangle(
                         graphics::DrawMode::fill(), 
-                        Rect::new(2005.0 + j as f32 * 50.0, 5.0 + i as f32 * 50.0, 40.0, 40.0), 
+                        Rect::new(dim + 5.0 + j as f32 * 50.0, 5.0 + i as f32 * 50.0, 40.0, 40.0), 
                         Color::from_rgb((255.0 * jtem.abs()) as u8, 0, 0)
                     )?;
                 }
@@ -219,6 +227,7 @@ impl State {
             am_m,
             window_drag_offset: (0.0, 0.0),
             cls,
+            dim,
 //            quit: false,
         })
     }
@@ -423,8 +432,8 @@ impl EventHandler for State {
         for i in 0..self.n as usize {
             mb.circle(
                 graphics::DrawMode::fill(), 
-                Vec2::new(self.particles[i].pos.0 * 2000.0, self.particles[i].pos.1 * 2000.0), 
-                10.0,
+                Vec2::new(self.particles[i].pos.0 * self.dim, self.particles[i].pos.1 * self.dim), 
+                10.0 * (self.dim / 2000.0),
                 1.0, 
                 self.cls[self.particles[i].color as usize]
             )?;
