@@ -38,7 +38,7 @@ fn main() {
     // Create an instance of your event handler. 
     // Usually, you should provide it with the Context object to
     // use when setting your game up.
-    let my_game = State::new(&mut ctx, 3000, 255, /*2,*/ 0.040, 0.1).unwrap();
+    let my_game = State::new(&mut ctx, 1000, 20, 2, 0.040, 0.1).unwrap();
     
 
     /*std::thread::spawn(move || {
@@ -53,7 +53,7 @@ fn main() {
 struct State {
     n: u32, // number of particles 
     n_colours: u8, // number of colours
-//    n_d: u8, // number of dimensions
+    n_d: u8, // number of dimensions
 
     particles: Vec<Particle>,
 
@@ -83,13 +83,13 @@ struct Particle {
 }
 
 impl State {
-    fn new(ctx: &mut Context, n: u32, n_colours: u8, /*n_d: u8,*/ f_halflife: f32, r_max: f32) -> GameResult<Self> {
-        /*let s_a = 1.0;
+    fn new(ctx: &mut Context, n: u32, n_colours: u8, n_d: u8, f_halflife: f32, r_max: f32) -> GameResult<Self> {
+        let s_a = 1.0;
         let p_a = 0.0;
         let p2_a = 0.0;
         //let m_a = 0.0;
         let n2_a = 0.0;
-        let n_a = 0.5;*/
+        let n_a = 0.5;
 
         //let attraction_matrix = State::randomise_matrix(n_colours);
         let attraction_matrix = State::generate_snake_matrix(1.0, 0.5, 0.0, n_colours);
@@ -126,19 +126,19 @@ impl State {
 
         let mut am_mb = MeshBuilder::new();
         am_mb.rectangle(graphics::DrawMode::fill(), Rect::new(2000.0, 0.0, 300.0, 300.0), Color::from_rgb(100, 100, 100))?;
-        for (i, item) in attraction_matrix.iter().enumerate() {
-            for (j, &jtem) in item.iter().enumerate() {
-                if jtem >= 0.0 {
+        for i in 0..n_colours as usize {
+            for j in 0..n_colours as usize {
+                if attraction_matrix[i][j] >= 0.0 {
                     am_mb.rectangle(
                         graphics::DrawMode::fill(), 
                         Rect::new(2005.0 + j as f32 * 50.0, 5.0 + i as f32 * 50.0, 40.0, 40.0), 
-                        Color::from_rgb(0, (255.0 * jtem) as u8, 0)
+                        Color::from_rgb(0, (255.0 * attraction_matrix[i][j]) as u8, 0)
                     )?;
                 } else {
                     am_mb.rectangle(
                         graphics::DrawMode::fill(), 
                         Rect::new(2005.0 + j as f32 * 50.0, 5.0 + i as f32 * 50.0, 40.0, 40.0), 
-                        Color::from_rgb((255.0 * jtem.abs()) as u8, 0, 0)
+                        Color::from_rgb((255.0 * attraction_matrix[i][j].abs()) as u8, 0, 0)
                     )?;
                 }
             }
@@ -147,13 +147,13 @@ impl State {
         Ok(State {
             n,
             n_colours,
-//            n_d,
+            n_d,
             particles: State::randomise_particles(n, n_colours),
             attraction_matrix,
             f_halflife,
             f_factor: 0.5f32.powf(0.01 / f_halflife),
             r_max,
-            fo_factor: 200.0,
+            fo_factor: 20.0,
             dt: 0.01,
             am_m,
             window_drag_offset: (0.0, 0.0),
@@ -178,7 +178,7 @@ impl State {
     fn randomise_particles(n: u32, n_colours: u8) -> Vec<Particle> {
         let mut rng = rand::thread_rng();
         let mut particles: Vec<Particle> = vec![];
-        for _i in 0..n {
+        for i in 0..n {
             let mut p = Particle::new();
             p.pos = (rng.gen::<f32>(), rng.gen::<f32>());
             p.color = (rng.gen::<f32>() * n_colours as f32).floor() as u8;
@@ -194,7 +194,7 @@ impl State {
 
         for i in 0..n_colours as usize {
             let mut row: Vec<f32> = vec![];
-            for _j in 0..n_colours as usize {
+            for j in 0..n_colours as usize {
                 row.push(0.0);
             }
             row[i] = s_a;
@@ -206,13 +206,12 @@ impl State {
         matrix
     }
 
-    #[inline]
     fn calculate_force(r: f32, a: f32) -> f32 {
         let beta = 0.3;
         if r < beta {
-            r / beta - 1.0
+            return r / beta - 1.0;
         } else if beta < r && r < 1.0 {
-            a * (1.0 - (2.0 * r - 1.0 - beta).abs() / (1.0 - beta))
+            return a * (1.0 - (2.0 * r - 1.0 - beta).abs() / (1.0 - beta));
         } else {0.0}
     }
 }
@@ -222,44 +221,6 @@ impl EventHandler for State {
         let m_ctx = &ctx.mouse;
         let k_ctx = &ctx.keyboard;
 
-        if k_ctx.is_key_just_pressed(KeyCode::Period) {
-            self.fo_factor = match self.fo_factor {
-                0.3 => 0.5,
-                0.5 => 0.75,
-                0.75 => 1.0,
-                1.0 => 1.5,
-                1.5 => 2.0,
-                2.0 => 3.0,
-                3.0 => 4.0,
-                4.0 => 5.0,
-                5.0 => 7.5,
-                7.5 => 10.0,
-                10.0 => 12.5,
-                12.5 => 17.5,
-                17.5 => 25.0,
-                25.0 => 50.0,
-                _ => 50.0
-            };
-        }
-        if k_ctx.is_key_just_pressed(KeyCode::Comma) {
-            self.fo_factor = match self.fo_factor {
-                0.5 => 0.3,
-                0.75 => 0.5,
-                1.0 => 0.75,
-                1.5 => 1.0,
-                2.0 => 1.5,
-                3.0 => 2.0,
-                4.0 => 3.0,
-                5.0 => 4.0,
-                7.5 => 5.0,
-                10.0 => 7.5,
-                12.5 => 10.0,
-                17.5 => 12.5,
-                25.0 => 17.5,
-                50.0 => 25.0,
-                _ => 0.3
-            };
-        }
         /*if k_ctx.is_key_just_pressed(KeyCode::Equals) {
             
         }*/
@@ -294,10 +255,8 @@ impl EventHandler for State {
             self.particles[i].vel.1 = self.particles[i].vel.1 * self.f_factor + total_fy;
         }
         for i in 0..self.n as usize {
-            self.particles[i].pos.0 = (self.particles[i].pos.0 + self.particles[i].vel.0 * self.dt).min(1.0).max(0.0);
-            self.particles[i].pos.1 = (self.particles[i].pos.1 + self.particles[i].vel.1 * self.dt).min(1.0).max(0.0); 
-            self.particles[i].vel.0 = if self.particles[i].pos.0 == 0.0 || self.particles[i].pos.0 == 1.0 { 0.0 } else { self.particles[i].vel.0 };
-            self.particles[i].vel.1 = if self.particles[i].pos.1 == 0.0 || self.particles[i].pos.1 == 1.0 { 0.0 } else { self.particles[i].vel.1 };
+            self.particles[i].pos.0 += self.particles[i].vel.0 * self.dt;
+            self.particles[i].pos.1 += self.particles[i].vel.1 * self.dt; 
         }
         Ok(())
     }
@@ -373,21 +332,34 @@ impl Particle {
     }
 }
 
+struct State2 {
+
+}
+
+impl EventHandler for State2 {
+    fn update(&mut self, _ctx: &mut Context) -> Result<(), GameError> {
+        Ok(())
+    }
+    fn draw(&mut self, _ctx: &mut Context) -> Result<(), GameError> {
+        Ok(())
+    }
+}
+
 fn hsv_to_rgb(h: f32, s: f32, v: f32) -> Color {
     let c = v * s;
     let h_prime = h / 60.0;
     let x = c * (1.0 - (h_prime % 2.0 - 1.0).abs());
     let m = v - c;
 
-    let (r1, g1, b1) = if (0.0..1.0).contains(&h_prime) {
+    let (r1, g1, b1) = if h_prime >= 0.0 && h_prime < 1.0 {
         (c, x, 0.0)
-    } else if (1.0..2.0).contains(&h_prime) {
+    } else if h_prime >= 1.0 && h_prime < 2.0 {
         (x, c, 0.0)
-    } else if (2.0..3.0).contains(&h_prime) {
+    } else if h_prime >= 2.0 && h_prime < 3.0 {
         (0.0, c, x)
-    } else if (3.0..4.0).contains(&h_prime) {
+    } else if h_prime >= 3.0 && h_prime < 4.0 {
         (0.0, x, c)
-    } else if (4.0..5.0).contains(&h_prime) {
+    } else if h_prime >= 4.0 && h_prime < 5.0 {
         (x, 0.0, c)
     } else {
         (c, 0.0, x)

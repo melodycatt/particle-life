@@ -4,6 +4,12 @@ version = "0.1.0"
 edition = "2021"
 default-run = "main"
 
+[profile.release]
+codegen-units = 1
+
+[build]
+rustflags = ["-C", "target-cpu=native"]
+
 [dependencies]
 ggez = "0.9.3"
 rand = "0.8.5"
