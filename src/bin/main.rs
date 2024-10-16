@@ -146,26 +146,8 @@ impl State {
             vec![n_a, 0.0f32, 0.0f32, 0.0f32, 0.0f32, s_a,],
         ];*/
 
-        let mut am_mb = MeshBuilder::new();
-        am_mb.rectangle(graphics::DrawMode::fill(), Rect::new(dim, 0.0, 300.0, 300.0), Color::from_rgb(100, 100, 100))?;
-        for (i, item) in attraction_matrix.iter().enumerate() {
-            for (j, &jtem) in item.iter().enumerate() {
-                if jtem >= 0.0 {
-                    am_mb.rectangle(
-                        graphics::DrawMode::fill(), 
-                        Rect::new(dim + 5.0 + j as f32 * 50.0, 5.0 + i as f32 * 50.0, 40.0, 40.0), 
-                        Color::from_rgb(0, (255.0 * jtem) as u8, 0)
-                    )?;
-                } else {
-                    am_mb.rectangle(
-                        graphics::DrawMode::fill(), 
-                        Rect::new(dim + 05.0 + j as f32 * 50.0, 5.0 + i as f32 * 50.0, 40.0, 40.0), 
-                        Color::from_rgb((255.0 * jtem.abs()) as u8, 0, 0)
-                    )?;
-                }
-            }
-        }
-        let am_m = Mesh::from_data(ctx, am_mb.build());
+        let am_m = State::matrix_mesh(dim, &attraction_matrix, &cls, ctx).unwrap();
+
         Ok(State {
             n,
             n_colours,
@@ -194,26 +176,8 @@ impl State {
             cls.push(hsv_to_rgb(i as f32 * angle, 1.0, 1.0))
         }
         
-        let mut am_mb = MeshBuilder::new();
-        am_mb.rectangle(graphics::DrawMode::fill(), Rect::new(dim, 0.0, 300.0, 300.0), Color::from_rgb(100, 100, 100))?;
-        for (i, item) in attraction_matrix.iter().enumerate() {
-            for (j, &jtem) in item.iter().enumerate() {
-                if jtem >= 0.0 {
-                    am_mb.rectangle(
-                        graphics::DrawMode::fill(), 
-                        Rect::new(dim + 5.0 + j as f32 * 50.0, 5.0 + i as f32 * 50.0, 40.0, 40.0), 
-                        Color::from_rgb(0, (255.0 * jtem) as u8, 0)
-                    )?;
-                } else {
-                    am_mb.rectangle(
-                        graphics::DrawMode::fill(), 
-                        Rect::new(dim + 5.0 + j as f32 * 50.0, 5.0 + i as f32 * 50.0, 40.0, 40.0), 
-                        Color::from_rgb((255.0 * jtem.abs()) as u8, 0, 0)
-                    )?;
-                }
-            }
-        }
-        let am_m = Mesh::from_data(ctx, am_mb.build());
+        let am_m = State::matrix_mesh(dim, &attraction_matrix, &cls, ctx).unwrap();
+
         Ok(State {
             n,
             n_colours,
@@ -284,6 +248,34 @@ impl State {
         };
 
         matrix
+    }
+
+    fn matrix_mesh(dim: f32, attraction_matrix: &Vec<Vec<f32>>, cls: &Vec<Color>, ctx: &Context) -> Result<Mesh, GameError> {
+        let mut am_mb = MeshBuilder::new();
+        am_mb.rectangle(graphics::DrawMode::fill(), Rect::new(dim, 0.0, 300.0, 300.0), Color::from_rgb(100, 100, 100))?;
+        for (i, item) in attraction_matrix.iter().enumerate() {
+            am_mb.rectangle(
+                graphics::DrawMode::fill(), 
+                Rect::new(dim - 55.0, 5.0 + i as f32 * 50.0, 40.0, 40.0), 
+                cls[i]
+            )?;
+            for (j, &jtem) in item.iter().enumerate() {
+                if jtem >= 0.0 {
+                    am_mb.rectangle(
+                        graphics::DrawMode::fill(), 
+                        Rect::new(dim + 5.0 + j as f32 * 50.0, 5.0 + i as f32 * 50.0, 40.0, 40.0), 
+                        Color::from_rgb(0, (255.0 * jtem) as u8, 0)
+                    )?;
+                } else {
+                    am_mb.rectangle(
+                        graphics::DrawMode::fill(), 
+                        Rect::new(dim + 5.0 + j as f32 * 50.0, 5.0 + i as f32 * 50.0, 40.0, 40.0), 
+                        Color::from_rgb((255.0 * jtem.abs()) as u8, 0, 0)
+                    )?;
+                }
+            }
+        }
+        Ok(Mesh::from_data(ctx, am_mb.build()))
     }
 
     #[inline(always)]
